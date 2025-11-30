@@ -1,0 +1,108 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: user-service
+  cloud:
+    config:
+      uri: http://localhost:8888
+    discovery:
+      client:
+        composite-indicator:
+          enabled: false
+    loadbalancer:
+      retry:
+        enabled: true
+
+  datasource:
+    url: jdbc:postgresql://postgres:5432/postgres
+    username: user
+    password: 1234
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    defer-datasource-initialization: true
+  sql:
+    init:
+      mode: always
+
+  kafka:
+    bootstrap-servers: kafka:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: my-email-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-startup: true
+      properties:
+        spring.json.trusted-packages: "com.example.notificationhandlers"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.example.notificationhandlers.ServiceEventDto
+    listener:
+      type: single
+      ack-mode: manual
+      auto-startup: true
+
+app:
+  kafka:
+    topics:
+      user-topic: "user-topic"
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      userServiceCircuitBreaker:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+  timelimiter:
+    instances:
+      userServiceTimeout:
+        timeout-duration: 2s
+
+eureka:
+  client:
+    enabled: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    initial-instance-info-replication-interval-seconds: 10
+    registry-fetch-interval-seconds: 10
+    eureka-service-url-poll-interval-seconds: 10
+    eureka-server-connect-timeout-seconds: 30
+    eureka-server-read-timeout-seconds: 30
+  instance:
+    hostname: user-service
+    prefer-ip-address: false
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+logging:
+  level:
+    root: INFO
+    homework.user: DEBUG
+    org.hibernate: ERROR
+    org.springframework: WARN
+    org.apache.kafka: WARN
+  file:
+    name: logs/user-service.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
+      total-size-cap: 1GB
+      file-name-pattern: logs/user-service.%d{yyyy-MM-dd}.%i.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

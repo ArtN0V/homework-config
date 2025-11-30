@@ -1,0 +1,86 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: notification-service
+  cloud:
+    config:
+      uri: http://localhost:8888
+    discovery:
+      client:
+        composite-indicator:
+          enabled: false
+    loadbalancer:
+      retry:
+        enabled: true
+
+  kafka:
+    bootstrap-servers: kafka:9092
+    consumer:
+      group-id: notification-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted-packages: "*"
+
+  mail:
+    host: smtp.mailserver.example
+    port: 587
+    username: example_email_username
+    password: example_email_password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls.enable: true
+
+mail:
+  from: example@domain.com
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      notificationServiceCircuitBreaker:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+  timelimiter:
+    instances:
+      notificationServiceTimeout:
+        timeout-duration: 2s
+
+eureka:
+  client:
+    enabled: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    initial-instance-info-replication-interval-seconds: 10
+    registry-fetch-interval-seconds: 10
+    eureka-service-url-poll-interval-seconds: 10
+    eureka-server-connect-timeout-seconds: 30
+    eureka-server-read-timeout-seconds: 30
+  instance:
+    hostname: notification-service
+    prefer-ip-address: false
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+logging:
+  level:
+    root: INFO
+    homework.notification: DEBUG
+    org.springframework: WARN
+    org.apache.kafka: WARN
+  file:
+    name: logs/notification-service.log
+  logback:
+    rollingpolicy:
+      max-file-size: 10MB
+      max-history: 30
+      total-size-cap: 1GB
+      file-name-pattern: logs/notification-service.%d{yyyy-MM-dd}.%i.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
